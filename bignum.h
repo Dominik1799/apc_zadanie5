@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
+#include <algorithm>
 
 #define SUPPORT_DIVISION 0 // define as 1 when you have implemented the division
 #define SUPPORT_IFSTREAM 0 // define as 1 when you have implemented the input >>
@@ -51,6 +52,8 @@ private:
     friend std::ostream& operator<<(std::ostream& lhs, const BigNum& rhs);
     friend bool isSmaller(const BigNum& num1, const BigNum& num2);
     friend BigNum operator+(BigNum lhs, const BigNum& rhs);
+    friend void alignAndReverse(BigNum& lhs,  BigNum& rhs);
+    friend BigNum operator-(BigNum lhs, const BigNum& rhs);
 
 };
 
@@ -119,14 +122,52 @@ bool isSmaller(const BigNum& num1, const BigNum& num2){
     return false;
 }
 
+void alignAndReverse(BigNum& lhs, BigNum& rhs){
+    if (lhs.numBuffer.size() > rhs.numBuffer.size()){
+        const size_t diff = lhs.numBuffer.size() - rhs.numBuffer.size();
+        std::string zeroes(diff,'0');
+        rhs.numBuffer = zeroes + rhs.numBuffer;
+    }
+    if (lhs.numBuffer.size() < rhs.numBuffer.size()){
+        const size_t diff = rhs.numBuffer.size() - lhs.numBuffer.size();
+        std::string zeroes(diff,'0');
+        lhs.numBuffer = zeroes + lhs.numBuffer;
+    }
+    std::reverse(lhs.numBuffer.begin(),lhs.numBuffer.end());
+    std::reverse(rhs.numBuffer.begin(),rhs.numBuffer.end());
+}
+
 
 BigNum operator+(BigNum lhs, const BigNum& rhs){
     BigNum rhs2{rhs};
-    if (!isSmaller(lhs,rhs2))
-        std::swap(lhs,rhs2);
-
+    alignAndReverse(lhs,rhs2);
+    int result,carry = 0;
+    std::string bigNumResult;
+    for (size_t i = 0; i < lhs.numBuffer.size();i++){
+        result = (lhs.numBuffer[i]-'0')+ carry + (rhs2.numBuffer[i]-'0');
+        carry = result / 10;
+        bigNumResult += static_cast<char>((result % 10)+'0');
+    }
+    if (carry != 0){
+        bigNumResult+=static_cast<char>(carry +'0');
+    }
+    std::reverse(bigNumResult.begin(),bigNumResult.end());
+    rhs2.numBuffer = bigNumResult;
+    return rhs2;
 }
-BigNum operator-(BigNum lhs, const BigNum& rhs);
+
+BigNum operator-(BigNum lhs, const BigNum& rhs){
+    BigNum rhs2{rhs};
+    alignAndReverse(lhs,rhs2);
+    int result,carry = 0;
+    std::string bigNumResult;
+    for (size_t i = 0; i < lhs.numBuffer.size();i++){
+        result = ((lhs.numBuffer[i]-'0') + carry) - (rhs2.numBuffer[i]-'0');
+        carry = result / 10;
+        bigNumResult += static_cast<char>((result % 10)+'0');
+    }
+
+};
 BigNum operator*(BigNum lhs, const BigNum& rhs);
 
 #if SUPPORT_DIVISION == 1
