@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdint.h>
 #include <algorithm>
+#include <iostream>
 
 #define SUPPORT_DIVISION 0 // define as 1 when you have implemented the division
 #define SUPPORT_IFSTREAM 0 // define as 1 when you have implemented the input >>
@@ -54,15 +55,23 @@ private:
     friend BigNum operator+(BigNum lhs, const BigNum& rhs);
     friend void alignAndReverse(BigNum& lhs,  BigNum& rhs);
     friend BigNum operator-(BigNum lhs, const BigNum& rhs);
+    friend BigNum operator*(BigNum lhs, const BigNum& rhs);
+
+
 
 };
 
 BigNum::BigNum() {
     numBuffer = std::to_string(0);
+    sign = "+";
 }
 
 BigNum::BigNum(int64_t n) {
     numBuffer = std::to_string(n);
+    if (n < 0)
+        sign = "-";
+    else
+        sign = "+";
 }
 
 BigNum::BigNum(const std::string &str) {
@@ -74,7 +83,7 @@ BigNum::BigNum(const std::string &str) {
             wasFirstNumber = true;
             numBuffer += str[i];
         } else if (str[i] == '0'){
-            if (wasFirstNumber)
+            if (wasFirstNumber || i+1 == str.size())
                 numBuffer += str[i];
         }else if ((str[i] == '+' || str[i] == '-') && i == 0)
             continue;
@@ -87,6 +96,7 @@ BigNum::BigNum(const std::string &str) {
 
 BigNum::BigNum(const BigNum &other) {
     numBuffer = other.numBuffer;
+    sign = other.sign;
 }
 
 void BigNum::exitProgram(int code,const std::string& message) {
@@ -113,7 +123,7 @@ bool isSmaller(const BigNum& num1, const BigNum& num2){
         else if (len1 < len2)
             return false;
     }
-    for (int i = 0; i < len1; i++) {
+    for (size_t i = 0; i < len1; i++) {
         if (num1.numBuffer[i] < num2.numBuffer[i])
             return true;
         else if (num1.numBuffer[i] > num2.numBuffer[i])
@@ -140,6 +150,18 @@ void alignAndReverse(BigNum& lhs, BigNum& rhs){
 
 BigNum operator+(BigNum lhs, const BigNum& rhs){
     BigNum rhs2{rhs};
+    if (lhs.sign == "-" && rhs2.sign == "-"){
+        rhs2.sign = "+";
+        return lhs-rhs2;
+    }
+    if (lhs.sign == "-"){
+        lhs.sign = "+";
+        return rhs2 - lhs;
+    }
+    if (rhs2.sign == "-"){
+        rhs2.sign = "+";
+        return lhs-rhs2;
+    }
     alignAndReverse(lhs,rhs2);
     int result,carry = 0;
     std::string bigNumResult;
@@ -152,23 +174,100 @@ BigNum operator+(BigNum lhs, const BigNum& rhs){
         bigNumResult+=static_cast<char>(carry +'0');
     }
     std::reverse(bigNumResult.begin(),bigNumResult.end());
-    rhs2.numBuffer = bigNumResult;
-    return rhs2;
+    BigNum res{bigNumResult};
+    return res;
 }
 
 BigNum operator-(BigNum lhs, const BigNum& rhs){
+    bool negative = false;
     BigNum rhs2{rhs};
+    if (lhs.sign == "-" && rhs2.sign == "-"){
+        lhs.sign = "+";
+        rhs2.sign = "+";
+        return rhs2 - lhs;
+    }
+    if (rhs2.sign == "-"){
+        rhs2.sign = "+";
+        return lhs + rhs2;
+    }
+    if (lhs.sign == "-"){
+        lhs.sign = "+";
+        rhs2.sign = "+";
+        BigNum res{lhs + rhs2};
+        res.sign = "-";
+        return res;
+    }
+    if (isSmaller(lhs,rhs2)){
+        std::swap(lhs.numBuffer,rhs2.numBuffer);
+        negative = true;
+    }
     alignAndReverse(lhs,rhs2);
     int result,carry = 0;
+    bool shouldCarry = false;
     std::string bigNumResult;
     for (size_t i = 0; i < lhs.numBuffer.size();i++){
-        result = ((lhs.numBuffer[i]-'0') + carry) - (rhs2.numBuffer[i]-'0');
-        carry = result / 10;
-        bigNumResult += static_cast<char>((result % 10)+'0');
+        if ((lhs.numBuffer[i]-'0') < rhs2.numBuffer[i]-'0' + carry){
+            lhs.numBuffer[i]+=10;
+            shouldCarry = true;
+        }
+        result = (lhs.numBuffer[i]-'0' - (rhs2.numBuffer[i]-'0' + carry));
+        bigNumResult+=static_cast<char>(result +'0');
+        if (shouldCarry)
+            carry = 1;
+        else
+            carry = 0;
+        shouldCarry = false;
+    }
+    std::reverse(bigNumResult.begin(),bigNumResult.end());
+    if (negative)
+        bigNumResult = '-' + bigNumResult;
+    BigNum res{bigNumResult};
+    return res;
+
+}
+BigNum operator*(BigNum lhs, const BigNum& rhs){
+    BigNum rhs2{rhs};
+    if (lhs.numBuffer == "0" || rhs2.numBuffer == "0")
+        return BigNum{"0"};
+    int len1 = lhs.numBuffer.size();
+    int len2 = rhs2.numBuffer.size();
+    std::vector<int> result(len1 + len2, 0);
+    int i_n1 = 0;
+    int i_n2;
+    for (int i=len1-1; i>=0; i--){
+        int carry = 0;
+        int n1 = lhs.numBuffer[i] - '0';
+        i_n2 = 0;
+        for (int j=len2-1; j>=0; j--){
+            int n2 = rhs.numBuffer[j] - '0';
+            int sum = n1*n2 + result[i_n1 + i_n2] + carry;
+            carry = sum/10;
+            result[i_n1 + i_n2] = sum % 10;
+            i_n2++;
+        }
+        if (carry > 0)
+            result[i_n1 + i_n2] += carry;
+
+        i_n1++;
     }
 
-};
-BigNum operator*(BigNum lhs, const BigNum& rhs);
+    std::string res;
+    for (int j : result){
+        res += std::to_string(j);
+    }
+    std::string sign;
+    std::reverse(res.begin(),res.end());
+    if (lhs.sign == "-" && rhs2.sign == "-")
+        sign = "+";
+    else if (lhs.sign == "-")
+        sign = "-";
+    BigNum bigNumRes{res};
+    bigNumRes.sign = sign;
+    return bigNumRes;
+}
+
+
+
 
 #if SUPPORT_DIVISION == 1
 BigNum operator/(BigNum lhs, const BigNum& rhs); // bonus
@@ -176,23 +275,23 @@ BigNum operator%(BigNum lhs, const BigNum& rhs); // bonus
 #endif
 
 bool operator==(const BigNum& lhs, const BigNum& rhs){
-    return lhs.numBuffer == rhs.numBuffer;
+    return lhs.numBuffer == rhs.numBuffer && lhs.sign == rhs.sign;
 }
 
 bool operator!=(const BigNum& lhs, const BigNum& rhs){
-    return lhs.numBuffer != rhs.numBuffer;
+    return lhs.numBuffer != rhs.numBuffer || lhs.sign != rhs.sign;
 }
 bool operator<(const BigNum& lhs, const BigNum& rhs){
-    return false;
+    return isSmaller(lhs,rhs);
 }
 bool operator>(const BigNum& lhs, const BigNum& rhs){
-    return false;
+    return !isSmaller(lhs,rhs) && lhs != rhs;
 }
 bool operator<=(const BigNum& lhs, const BigNum& rhs){
-    return false;
+    return isSmaller(lhs,rhs) || lhs==rhs;
 }
 bool operator>=(const BigNum& lhs, const BigNum& rhs){
-    return false;
+    return !isSmaller(lhs,rhs);
 }
 
 
