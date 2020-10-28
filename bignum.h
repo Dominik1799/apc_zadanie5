@@ -43,7 +43,7 @@ private:
     // public interface, also you can declare friends here if you want
     std::string numBuffer;
     std::string sign;
-    void exitProgram(int code,const std::string& message);
+    static void exitProgram(int code,const std::string& message);
     friend bool operator==(const BigNum& lhs, const BigNum& rhs);
     friend bool operator!=(const BigNum& lhs, const BigNum& rhs);
     friend bool operator<(const BigNum& lhs, const BigNum& rhs);
@@ -229,8 +229,8 @@ BigNum operator*(BigNum lhs, const BigNum& rhs){
     BigNum rhs2{rhs};
     if (lhs.numBuffer == "0" || rhs2.numBuffer == "0")
         return BigNum{"0"};
-    int len1 = lhs.numBuffer.size();
-    int len2 = rhs2.numBuffer.size();
+    size_t len1 = lhs.numBuffer.size();
+    size_t len2 = rhs2.numBuffer.size();
     std::vector<int> result(len1 + len2, 0);
     int i_n1 = 0;
     int i_n2;
@@ -302,6 +302,38 @@ std::ostream& operator<<(std::ostream& lhs, const BigNum& rhs){
     return lhs;
 }
 
+BigNum &BigNum::operator=(const BigNum &rhs) {
+    if (this != &rhs){
+        numBuffer = rhs.numBuffer;
+        sign = rhs.sign;
+    }
+    return *this;
+}
+
+const BigNum &BigNum::operator+() const {
+    return *this;
+}
+
+BigNum BigNum::operator-() const {
+    if (sign == "-")
+        return BigNum{"+" + numBuffer};
+    return BigNum{"-" + numBuffer};
+}
+
+BigNum &BigNum::operator+=(const BigNum &rhs) {
+    *this = *this + rhs;
+    return *this;
+}
+
+BigNum &BigNum::operator-=(const BigNum &rhs) {
+    *this = *this - rhs;
+    return *this;
+}
+
+BigNum &BigNum::operator*=(const BigNum &rhs) {
+    *this = *this * rhs;
+    return *this;
+}
 
 
 #if SUPPORT_IFSTREAM == 1

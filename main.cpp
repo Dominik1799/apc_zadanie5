@@ -3,10 +3,10 @@
 
 
 int main() {
-    BigNum n1{"4"};
-    BigNum n2{"5"};
-    bool a = n1 != n2;
-    std::cout << a;
+    BigNum n1{"-4"};
+    BigNum n2{"-50"};
+    n1 = n1;
+    std::cout << n1*n2;
     return 0;
 }
 
